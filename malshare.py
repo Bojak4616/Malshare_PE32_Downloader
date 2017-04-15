@@ -52,7 +52,7 @@ def dl_mal(directory, hashes, count_max):
 
 			if _json['F_TYPE'] == 'PE32':
 				r = requests.get('http://malshare.com/api.php?api_key={}&action=getfile&hash={}'.format(environ['MAL_KEY'], _hash))
-				if r.content.find('ERROR!') < 0:
+				if r.content.find('ERROR!') >= 0:
 					print "[!] Error: API limit reached for downloads"
 					return True
 				with open('{}.exe'.format(_hash), 'wb') as FILE:
