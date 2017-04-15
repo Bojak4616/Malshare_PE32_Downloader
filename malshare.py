@@ -43,7 +43,7 @@ def dl_mal(directory, hashes, count_max):
 	print "[*] Starting to download malware"
 	count = 0
 	chdir(directory)
-	files = [_file.rstrip('.exe') for _file in os.listdir(directory)]
+	files = [_file.rstrip('.exe') for _file in listdir(directory)]
 	for _hash in hashes:
 		if _hash in files: continue
 		try:
