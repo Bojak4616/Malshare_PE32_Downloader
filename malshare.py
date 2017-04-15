@@ -2,7 +2,7 @@
 
 import requests
 import argparse
-from os import chdir, getcwd, environ
+from os import listdir, chdir, getcwd, environ
 from sys import exit
 
 
@@ -19,7 +19,6 @@ def parse_args():
 
 
 def get_hashes():
-	print "[*] Starting to download malware"
 	hashes = []
 	for month in xrange(1,13):
 		print '[*] On month: {}'.format(month)
@@ -41,15 +40,21 @@ def get_hashes():
 	return hashes
 
 def dl_mal(directory, hashes, count_max):
+	print "[*] Starting to download malware"
 	count = 0
 	chdir(directory)
+	files = [_file.rstrip('.exe') for _file in os.listdir(directory)]
 	for _hash in hashes:
+		if _hash in files: continue
 		try:
 			r = requests.get('http://malshare.com/api.php?api_key={}&action=details&hash={}'.format(environ['MAL_KEY'], _hash))
 			_json = r.json()
 
 			if _json['F_TYPE'] == 'PE32':
 				r = requests.get('http://malshare.com/api.php?api_key={}&action=getfile&hash={}'.format(environ['MAL_KEY'], _hash))
+				if r.content.find('ERROR!') < 0:
+					print "[!] Error: API limit reached for downloads"
+					return True
 				with open('{}.exe'.format(_hash), 'wb') as FILE:
 					FILE.write(r.content)
 				count += 1
