@@ -4,7 +4,7 @@ import requests
 import argparse
 from os import listdir, chdir, getcwd, environ
 from sys import exit
-
+from random import shuffle
 
 def parse_args():
 	parser = argparse.ArgumentParser()
@@ -36,8 +36,9 @@ def get_hashes():
 			except requests.RequestException as e:
 				print e
 				pass
-			
-	return hashes
+
+	# Shuffling is not optimal, but gets downloading new stuff sooner		
+	return shuffle(hashes)
 
 def dl_mal(directory, hashes, count_max):
 	print "[*] Starting to download malware"
