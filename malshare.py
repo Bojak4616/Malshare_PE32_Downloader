@@ -1,82 +1,95 @@
 #!/usr/bin/python
 
-import requests
-import argparse
 from os import listdir, chdir, getcwd, environ
-from sys import exit
+import sys
+import argparse
+from datetime import date, timedelta
 from random import shuffle
+import requests
 
 def parse_args():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('-d', '--dry_run', required=False, dest='dry_run', action='store_true',
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--dry_run', required=False, dest='dry_run', action='store_true',
                         help='See hashes that would be downloaded')
-	parser.add_argument('-dir', '--directory', required=False, dest='directory', default=getcwd(),
+    parser.add_argument('-dir', '--directory', required=False, dest='directory', default=getcwd(),
                         help='Directory to place malware. Default is CWD')
-	parser.add_argument('-c', '--count', required=False, dest='count', default=0,
+    parser.add_argument('-c', '--count', required=False, dest='count', default=0,
                         help='Number of malware to download')
-	
-	return parser.parse_args()
+    
+    return parser.parse_args()
 
+def datespan(startDate, endDate, delta=timedelta(days=1)):
+    currentDate = startDate
+    while currentDate < endDate:
+        yield currentDate
+        currentDate += delta
 
 def get_hashes():
-	hashes = []
-	for month in xrange(1,13):
-		print '[*] On month: {}'.format(month)
-		for day in xrange(1,29):
-			url = 'http://www.malshare.com/daily/2016-{:02d}-{:02d}/malshare_fileList.2016-{:02d}-{:02d}.txt'.format(month, day, month, day)
-			try:
-				r = requests.get(url)
-				hashes += r.content.split('\n')
-				hashes.pop()
-			except KeyboardInterrupt:
-				print '\n'.join(hashes)
-				print "[!] Interrupted"
-				print "[*] Current scraped hashes"
-				exit(0)
-			except requests.RequestException as e:
-				print e
-				pass
+    hashes = []
+    for day in datespan(date(2016, 1, 1), date(2017, 1, 1)):
+        url = 'http://www.malshare.com/daily/{0}/malshare_fileList.{0}.txt'.format(day.strftime('%Y-%m-%d'))
+        try:
+            r = requests.get(url)
+            hashes += r.content.splitlines()
+        except KeyboardInterrupt:
+            print '\n'.join(hashes)
+            print "[!] Interrupted"
+            print "[*] Current scraped hashes"
+            sys.exit(0)
+        except requests.RequestException as e:
+            print e
 
-	# Shuffling is not optimal, but gets downloading new stuff sooner		
-	return shuffle(hashes)
+    # Shuffling is not optimal, but gets downloading new stuff sooner		
+    return shuffle(hashes)
 
 def dl_mal(directory, hashes, count_max):
-	print "[*] Starting to download malware"
-	count = 0
-	chdir(directory)
-	files = [_file.rstrip('.exe') for _file in listdir(directory)]
-	for _hash in hashes:
-		if _hash in files: continue
-		try:
-			r = requests.get('http://malshare.com/api.php?api_key={}&action=details&hash={}'.format(environ['MAL_KEY'], _hash))
-			_json = r.json()
+    print "[*] Starting to download malware"
 
-			if _json['F_TYPE'] == 'PE32':
-				r = requests.get('http://malshare.com/api.php?api_key={}&action=getfile&hash={}'.format(environ['MAL_KEY'], _hash))
-				if r.content.find('ERROR!') >= 0:
-					print "[!] Error: API limit reached for downloads"
-					return True
-				with open('{}.exe'.format(_hash), 'wb') as FILE:
-					FILE.write(r.content)
-				count += 1
-				#print count
-				if count == count_max: return True
+    chdir(directory)    
+    files = [_file.rstrip('.exe') for _file in listdir(directory)]
+    
+    count = 0
+    params = {
+        'api_key': environ['MAL_KEY']
+    }
+    
+    for _hash in hashes:
+        if _hash in files:
+            continue
 
-		except KeyboardInterrupt:
-			print "[!] Interrupted"
-			print "[!] Last file: {}.exe MAY be currupted".format(_hash)
-			exit(0)
-		except requests.RequestException as e:
-                        print e
-                        pass	 
+        try:
+            params.update({'action': 'details', 'hash': _hash})
+            r = requests.get('http://malshare.com/api.php', params=params)
+            _json = r.json()
+
+            if _json['F_TYPE'] == 'PE32':
+                params.update({'action': 'getfile'})
+                r = requests.get('http://malshare.com/api.php', params=params)
+                if 'ERROR!' in r.content:
+                    print "[!] Error: API limit reached for downloads"
+                    break
+                with open('{}.exe'.format(_hash), 'wb') as f:
+                    f.write(r.content)
+                
+                count += 1
+                #print count
+                if count == count_max:
+                    break
+        except KeyboardInterrupt:
+            print "[!] Interrupted"
+            print "[!] Last file: {}.exe MAY be currupted".format(_hash)
+            sys.exit(0)
+        except requests.RequestException as e:
+            print e
 
 def main():
-	args = parse_args()
-	hashes = get_hashes()
-	if not args.dry_run: dl_mal(args.directory, hashes, args.count) 
-	print "[*] All done!"
-	exit(0)
+    args = parse_args()
+    hashes = get_hashes()
+    if not args.dry_run:
+        dl_mal(args.directory, hashes, args.count) 
+
+    print "[*] All done!"
+    sys.exit(0)
 
 if __name__ == '__main__':
-	main()
-
+    main()
