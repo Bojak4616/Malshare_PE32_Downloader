@@ -38,7 +38,8 @@ def get_hashes():
 				pass
 
 	# Shuffling is not optimal, but gets downloading new stuff sooner		
-	return shuffle(hashes)
+	shuffle(hashes)
+	return hashes
 
 def dl_mal(directory, hashes, count_max):
 	print "[*] Starting to download malware"
