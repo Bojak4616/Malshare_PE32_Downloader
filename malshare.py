@@ -80,7 +80,7 @@ def dl_mal(directory, hashes, count_max):
                     break
         except KeyboardInterrupt:
             print "[!] Interrupted"
-            print "[!] Last file: {}.exe MAY be currupted".format(_hash)
+            print "[!] Last file: {}.exe MAY be corrupted".format(_hash)
             sys.exit(0)
         except requests.RequestException as e:
             print e
